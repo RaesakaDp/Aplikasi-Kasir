@@ -228,7 +228,7 @@ body {
     color: var(--text-main);
 }
 
-/* APLIKASI UTAMA & SIDEBAR */
+/* --- APLIKASI UTAMA & SIDEBAR --- */
 .app-container {
     display: flex;
     height: 100vh;
@@ -333,7 +333,7 @@ body {
     background: #fecaca;
 }
 
-/* MAIN CONTENT */
+/* --- MAIN CONTENT & POS LAYOUT --- */
 .main-content {
     flex: 1;
     display: flex;
@@ -370,7 +370,6 @@ body {
     font-weight: 500;
 }
 
-/* POS LAYOUT & KARTU PRODUK TERKUNCI RAPI */
 .pos-container {
     display: grid;
     grid-template-columns: 1fr 380px;
@@ -438,15 +437,17 @@ body {
     font-weight: 500;
     color: var(--text-muted);
     white-space: nowrap;
-    transition: all 0.2s;
+    transition: all 0.25s ease;
 }
 
 .cat-btn:hover, .cat-btn.active {
     background: var(--primary);
     color: white;
     border-color: var(--primary);
+    transform: translateY(-1px);
 }
 
+/* --- KARTU PRODUK RAPI & TERKUNCI --- */
 .product-grid {
     flex: 1;
     padding: 16px;
@@ -472,6 +473,17 @@ body {
 .product-card:hover {
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+@keyframes popEffect {
+    0% { transform: scale(1); }
+    50% { transform: scale(0.95); }
+    100% { transform: scale(1); }
+}
+
+.product-card.clicked {
+    animation: popEffect 0.2s ease;
+    border-color: var(--primary);
 }
 
 .product-img {
@@ -510,7 +522,7 @@ body {
     color: var(--text-muted);
 }
 
-/* CART SECTION */
+/* --- CART & MEJA MANAGEMENT --- */
 .cart-section {
     background: var(--surface);
     border: 1px solid var(--border);
@@ -540,6 +552,53 @@ body {
     font-size: 0.85rem;
     cursor: pointer;
     font-weight: 500;
+}
+
+.order-type-container {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    background: #f8fafc;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.order-type-buttons {
+    display: flex;
+    gap: 8px;
+}
+
+.type-btn {
+    flex: 1;
+    padding: 6px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--surface);
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.table-select-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.table-select-wrapper label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-muted);
+}
+
+.table-select-wrapper select {
+    padding: 4px 8px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 0.85rem;
+    outline: none;
 }
 
 .cart-items {
@@ -653,10 +712,29 @@ body {
     gap: 12px;
 }
 
+.payment-method-group {
+    gap: 4px;
+}
+
+.payment-method-group label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-muted);
+}
+
+.payment-method-group select {
+    padding: 8px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 0.9rem;
+    outline: none;
+}
+
 .input-cash {
     display: flex;
     flex-direction: column;
     gap: 4px;
+    margin-top: 8px;
 }
 
 .input-cash label {
@@ -679,6 +757,7 @@ body {
 
 .change-row {
     font-weight: 600;
+    margin-top: 6px;
 }
 
 .btn-pay {
@@ -692,6 +771,7 @@ body {
     font-weight: 600;
     cursor: pointer;
     transition: opacity 0.2s;
+    margin-top: 4px;
 }
 
 .btn-pay:disabled {
@@ -704,7 +784,38 @@ body {
     opacity: 0.9;
 }
 
-/* TABLES & CARDS */
+/* --- TOAST NOTIFICATION --- */
+#toast-notification {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    background: var(--text-main);
+    color: white;
+    padding: 12px 20px;
+    border-radius: 10px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.9rem;
+    z-index: 9999;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    pointer-events: none;
+}
+
+#toast-notification.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+#toast-notification i {
+    color: var(--success);
+    font-size: 1.1rem;
+}
+
+/* --- TABLES & CARDS --- */
 .table-card {
     background: var(--surface);
     border: 1px solid var(--border);
@@ -739,7 +850,7 @@ body {
     object-fit: cover;
 }
 
-/* REPORT STATS */
+/* --- REPORT STATS --- */
 .report-stats {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -800,7 +911,11 @@ body {
     outline: none;
 }
 
-/* BUTTONS */
+.report-table-card {
+    margin-top: 24px;
+}
+
+/* --- BUTTONS --- */
 .btn-primary {
     background: var(--primary);
     color: white;
@@ -846,7 +961,7 @@ body {
 
 .btn-danger:hover { background: #fecaca; }
 
-/* MODAL */
+/* --- MODALS --- */
 .modal {
     display: none;
     position: fixed;
@@ -924,63 +1039,61 @@ body {
     gap: 12px;
 }
 
-/* STRUK PRINT FORMAT */
+/* QRIS MODAL CUSTOM */
+.qris-modal-content {
+    text-align: center;
+    max-width: 380px;
+    padding: 24px;
+}
+
+.qris-modal-header {
+    border: none;
+    padding: 0 0 12px 0;
+}
+
+.qris-img-box {
+    background: #f8fafc;
+    padding: 16px;
+    border-radius: 12px;
+    margin-bottom: 12px;
+    border: 1px solid var(--border);
+}
+
+.qris-real-img {
+    width: 200px;
+    height: 200px;
+    object-fit: contain;
+    border-radius: 8px;
+    background: white;
+    padding: 8px;
+    border: 1px solid var(--border);
+}
+
+.qris-img-box p {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-top: 8px;
+}
+
+.qris-amount-box {
+    margin-bottom: 16px;
+}
+
+.qris-amount-box span {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    display: block;
+}
+
+.qris-amount-box h3 {
+    color: var(--primary);
+    font-size: 1.4rem;
+    font-weight: 700;
+}
+
+/* --- STRUK PRINT FORMAT --- */
 .receipt-print-area {
     display: none;
-}
-
-/* --- EFEK INTERAKTIF HALAMAN UTAMA (POS) --- */
-
-/* Animasi klik kartu produk (efek memantul) */
-@keyframes popEffect {
-    0% { transform: scale(1); }
-    50% { transform: scale(0.95); }
-    100% { transform: scale(1); }
-}
-
-.product-card.clicked {
-    animation: popEffect 0.2s ease;
-    border-color: var(--primary);
-}
-
-/* Notifikasi Kilat (Toast Notification) */
-#toast-notification {
-    position: fixed;
-    bottom: 30px;
-    right: 30px;
-    background: var(--text-main);
-    color: white;
-    padding: 12px 20px;
-    border-radius: 10px;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-size: 0.9rem;
-    z-index: 9999;
-    opacity: 0;
-    transform: translateY(20px);
-    transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-    pointer-events: none;
-}
-
-#toast-notification.show {
-    opacity: 1;
-    transform: translateY(0);
-}
-
-#toast-notification i {
-    color: var(--success);
-    font-size: 1.1rem;
-}
-
-/* Efek transisi halus saat kategori dipilih */
-.cat-btn {
-    transition: all 0.25s ease;
-}
-
-.cat-btn:hover {
-    transform: translateY(-1px);
 }
 
 @media print {

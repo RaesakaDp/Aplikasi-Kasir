@@ -20,10 +20,12 @@ const defaultUsers = [
 let products = JSON.parse(localStorage.getItem('cafe_products')) || defaultProducts;
 let users = JSON.parse(localStorage.getItem('cafe_users')) || defaultUsers;
 let currentUser = JSON.parse(localStorage.getItem('cafe_current_user')) || null;
+let activeShift = JSON.parse(localStorage.getItem('cafe_active_shift')) || null;
 
 let cart = [];
 let transactions = JSON.parse(localStorage.getItem('cafe_transactions')) || [];
 let activeCategory = 'All';
+let currentOrderType = 'Dine-In';
 
 // INISIALISASI
 document.addEventListener('DOMContentLoaded', () => {
@@ -63,14 +65,17 @@ function handleLogin(e) {
         showApp();
     } else {
         loginCard.classList.add('shake');
-        setTimeout(() => {
-            loginCard.classList.remove('shake');
-        }, 400);
+        setTimeout(() => loginCard.classList.remove('shake'), 400);
         alert('Username atau password salah!');
     }
 }
 
 function handleLogout() {
+    if (activeShift) {
+        if (!confirm('Anda belum melakukan tutup buku/shift. Yakin ingin keluar?')) {
+            return;
+        }
+    }
     currentUser = null;
     localStorage.removeItem('cafe_current_user');
     showLogin();
@@ -93,6 +98,26 @@ function showApp() {
     updateDateDisplay();
     renderProducts();
     switchTab('pos');
+
+    // Cek apakah shift aktif sudah dibuka
+    if (!activeShift) {
+        document.getElementById('shift-modal').classList.add('active');
+    }
+}
+
+function startShift(e) {
+    e.preventDefault();
+    const initialCash = parseFloat(document.getElementById('initial-cash').value) || 0;
+
+    activeShift = {
+        cashier: currentUser.name,
+        startTime: new Date().toISOString(),
+        initialCash: initialCash
+    };
+
+    localStorage.setItem('cafe_active_shift', JSON.stringify(activeShift));
+    document.getElementById('shift-modal').classList.remove('active');
+    showToast('Shift berhasil dimulai!');
 }
 
 function setupSidebarMenu() {
@@ -121,6 +146,13 @@ function setupSidebarMenu() {
             </li>
         `;
     }
+
+    // Menu Tutup Buku / Shift untuk semua user aktif
+    menu.innerHTML += `
+        <li onclick="openCloseShiftModal()">
+            <i class="fa-solid fa-vault"></i> Tutup Buku / Shift
+        </li>
+    `;
 }
 
 // FORMAT RUPIAH
@@ -172,7 +204,108 @@ function switchTab(tabId) {
     }
 }
 
-// --- FITUR KASIR (POS) & RENDER KATALOG AMAN ---
+// --- NOTIFIKASI KILAT (TOAST) ---
+function showToast(message) {
+    let toast = document.getElementById('toast-notification');
+    if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'toast-notification';
+        toast.innerHTML = `<i class="fa-solid fa-circle-check"></i> <span id="toast-message"></span>`;
+        document.body.appendChild(toast);
+    }
+
+    document.getElementById('toast-message').innerText = message;
+    toast.classList.add('show');
+
+    setTimeout(() => {
+        toast.classList.remove('show');
+    }, 2000);
+}
+
+// --- TUTUP BUKU & REKONSILIASI SHIFT ---
+function openCloseShiftModal() {
+    if (!activeShift) {
+        alert('Belum ada shift yang aktif.');
+        return;
+    }
+
+    const todayStr = new Date().toISOString().split('T')[0];
+    const shiftTransactions = transactions.filter(t => t.timestamp.startsWith(todayStr) && t.paymentMethod === 'Cash');
+    const totalCashSales = shiftTransactions.reduce((sum, t) => sum + t.grandTotal, 0);
+
+    const expectedCash = activeShift.initialCash + totalCashSales;
+
+    document.getElementById('rekap-initial').innerText = formatRupiah(activeShift.initialCash);
+    document.getElementById('rekap-cash-sales').innerText = formatRupiah(totalCashSales);
+    document.getElementById('rekap-expected').innerText = formatRupiah(expectedCash);
+    document.getElementById('actual-cash').value = '';
+    document.getElementById('rekap-diff').innerText = formatRupiah(0);
+
+    window.currentExpectedCash = expectedCash;
+    document.getElementById('close-shift-modal').classList.add('active');
+}
+
+function closeShiftModal() {
+    document.getElementById('close-shift-modal').classList.remove('active');
+}
+
+function calculateDifference() {
+    const actualCash = parseFloat(document.getElementById('actual-cash').value) || 0;
+    const diff = actualCash - window.currentExpectedCash;
+    const diffEl = document.getElementById('rekap-diff');
+
+    diffEl.innerText = formatRupiah(diff);
+    if (diff < 0) {
+        diffEl.style.color = 'var(--danger)';
+        diffEl.innerText += ' (Kurang)';
+    } else if (diff > 0) {
+        diffEl.style.color = 'var(--warning)';
+        diffEl.innerText += ' (Lebih)';
+    } else {
+        diffEl.style.color = 'var(--success)';
+        diffEl.innerText += ' (Pas)';
+    }
+}
+
+function finalizeCloseShift() {
+    const actualCash = parseFloat(document.getElementById('actual-cash').value);
+    if (isNaN(actualCash)) {
+        alert('Masukkan jumlah fisik uang di laci!');
+        return;
+    }
+
+    const diff = actualCash - window.currentExpectedCash;
+    alert(`Tutup buku berhasil!\nModal Awal: ${formatRupiah(activeShift.initialCash)}\nSeharusnya di Laci: ${formatRupiah(window.currentExpectedCash)}\nFaktual: ${formatRupiah(actualCash)}\nSelisih: ${formatRupiah(diff)}`);
+
+    localStorage.removeItem('cafe_active_shift');
+    activeShift = null;
+    closeShiftModal();
+    handleLogout();
+}
+
+// --- MANAJEMEN TIPE PESANAN (DINE-IN / TAKEAWAY) ---
+function setOrderType(type) {
+    currentOrderType = type;
+    const btnDineIn = document.getElementById('type-dinein');
+    const btnTakeaway = document.getElementById('type-takeaway');
+    const tableWrapper = document.getElementById('table-select-wrapper');
+
+    if (type === 'Dine-In') {
+        btnDineIn.style.background = 'var(--primary)';
+        btnDineIn.style.color = 'white';
+        btnTakeaway.style.background = 'var(--surface)';
+        btnTakeaway.style.color = 'var(--text-muted)';
+        tableWrapper.style.display = 'flex';
+    } else {
+        btnTakeaway.style.background = 'var(--primary)';
+        btnTakeaway.style.color = 'white';
+        btnDineIn.style.background = 'var(--surface)';
+        btnDineIn.style.color = 'var(--text-muted)';
+        tableWrapper.style.display = 'none';
+    }
+}
+
+// --- RENDER KATALOG PRODUK ---
 function renderProducts() {
     const grid = document.getElementById('product-grid');
     const searchInput = document.getElementById('search-product');
@@ -228,27 +361,6 @@ function filterProducts() {
 }
 
 // --- KERANJANG BELANJA ---
-// --- NOTIFIKASI KILAT (TOAST) ---
-function showToast(message) {
-    // Buat elemen toast jika belum ada di HTML
-    let toast = document.getElementById('toast-notification');
-    if (!toast) {
-        toast = document.createElement('div');
-        toast.id = 'toast-notification';
-        toast.innerHTML = `<i class="fa-solid fa-circle-check"></i> <span id="toast-message"></span>`;
-        document.body.appendChild(toast);
-    }
-
-    document.getElementById('toast-message').innerText = message;
-    toast.classList.add('show');
-
-    // Hilangkan otomatis setelah 2 detik
-    setTimeout(() => {
-        toast.classList.remove('show');
-    }, 2000);
-}
-
-// --- INTERAKSI TAMBAH KE KERANJANG DENGAN ANIMASI ---
 function addToCart(productId, event) {
     const product = products.find(p => p.id === productId);
     if (!product) return;
@@ -258,9 +370,6 @@ function addToCart(productId, event) {
         return;
     }
 
-    // Efek animasi klik pada card produk
-    // Cari elemen card yang diklik
-    event = event || window.event;
     const card = event.currentTarget;
     if (card) {
         card.classList.add('clicked');
@@ -279,11 +388,8 @@ function addToCart(productId, event) {
     }
 
     renderCart();
-    
-    // Tampilkan notifikasi interaktif
-    showToast(`${product.name} ditambahkan ke keranjang`);
+    showToast(`${product.name} ditambahkan`);
 }
-
 
 function updateCartQty(productId, change) {
     const cartItem = cart.find(item => item.id === productId);
@@ -355,7 +461,7 @@ function calculateTotal() {
     switchPaymentMethod();
 }
 
-// --- PILIHAN METODE PEMBAYARAN ---
+// --- PEMBAYARAN ---
 function switchPaymentMethod() {
     const method = document.getElementById('payment-method').value;
     const cashSection = document.getElementById('cash-payment-section');
@@ -399,7 +505,6 @@ function calculateChange() {
     }
 }
 
-// --- PROSES PEMBAYARAN & STRUK ---
 function processPayment() {
     if (cart.length === 0) return;
 
@@ -447,21 +552,20 @@ function executeFinalTransaction(methodName) {
     const trxId = 'TRX-' + Math.floor(100000 + Math.random() * 900000);
     const now = new Date();
     const timestamp = now.toISOString();
+    const tableNumber = currentOrderType === 'Dine-In' ? document.getElementById('table-number').value : 'Takeaway';
 
-    // Kurangi stok produk
     cart.forEach(cartItem => {
         const prod = products.find(p => p.id === cartItem.id);
-        if (prod) {
-            prod.stock -= cartItem.qty;
-        }
+        if (prod) prod.stock -= cartItem.qty;
     });
     localStorage.setItem('cafe_products', JSON.stringify(products));
 
-    // Simpan Transaksi
     const transaction = {
         id: trxId,
         timestamp: timestamp,
         cashier: currentUser.name,
+        orderType: currentOrderType,
+        tableInfo: tableNumber,
         paymentMethod: methodName,
         items: [...cart],
         subtotal: subtotal,
@@ -475,11 +579,9 @@ function executeFinalTransaction(methodName) {
     transactions.push(transaction);
     localStorage.setItem('cafe_transactions', JSON.stringify(transactions));
 
-    // Cetak Struk
     prepareReceiptForPrint(transaction);
     window.print();
 
-    // Reset Kasir
     cart = [];
     document.getElementById('discount-percent').value = 0;
     document.getElementById('cash-given').value = '';
@@ -493,6 +595,7 @@ function prepareReceiptForPrint(trx) {
     document.getElementById('receipt-trx-id').innerText = `ID: ${trx.id} (${trx.cashier})`;
     const dateObj = new Date(trx.timestamp);
     document.getElementById('receipt-time').innerText = dateObj.toLocaleString('id-ID');
+    document.getElementById('receipt-order-info').innerText = `${trx.orderType} | ${trx.tableInfo}`;
     document.getElementById('receipt-pay-method').innerText = `Metode: ${trx.paymentMethod}`;
 
     const itemsList = document.getElementById('receipt-items-list');
@@ -521,7 +624,6 @@ function prepareReceiptForPrint(trx) {
         document.getElementById('r-change-row').style.display = 'none';
     }
 }
-
 
 // --- MANAJEMEN PRODUK ---
 function renderProductTable() {
@@ -608,7 +710,6 @@ function deleteProduct(id) {
         renderProducts();
     }
 }
-
 
 // --- MANAJEMEN USER ---
 function renderUserTable() {
@@ -700,7 +801,6 @@ function deleteUser(username) {
     }
 }
 
-
 // --- LAPORAN PENJUALAN HARIAN ---
 function initReportDate() {
     const todayStr = new Date().toISOString().split('T')[0];
@@ -733,7 +833,7 @@ function renderReports() {
 
         tbody.innerHTML += `
             <tr>
-                <td><strong>${t.id}</strong><br><small style="color:var(--text-muted)">Kasir: ${t.cashier || '-'}</small></td>
+                <td><strong>${t.id}</strong><br><small style="color:var(--text-muted)">${t.orderType || 'Dine-In'} (${t.tableInfo || '-'})</small></td>
                 <td>${timeStr}</td>
                 <td><span class="badge-role" style="background:#e0f2fe; color:#0369a1;">${t.paymentMethod || 'Cash'}</span></td>
                 <td style="max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${itemsSummary}">${itemsSummary}</td>

@@ -109,11 +109,34 @@
                         <div class="product-grid" id="product-grid"></div>
                     </div>
 
-                    <!-- Sisi Kanan: Keranjang & Pembayaran -->
+                    <!-- Sisi Kanan: Keranjang, Meja & Pembayaran -->
                     <div class="cart-section">
                         <div class="cart-header">
                             <h3><i class="fa-solid fa-cart-shopping"></i> Pesanan Saat Ini</h3>
                             <button class="btn-clear" onclick="clearCart()">Kosongkan</button>
+                        </div>
+
+                        <!-- FITUR: MANAJEMEN MEJA & TIPE PESANAN -->
+                        <div class="order-type-container">
+                            <div class="order-type-buttons">
+                                <button type="button" class="type-btn active" id="type-dinein" onclick="setOrderType('Dine-In')">Dine-In</button>
+                                <button type="button" class="type-btn" id="type-takeaway" onclick="setOrderType('Takeaway')">Takeaway</button>
+                            </div>
+                            <div id="table-select-wrapper" class="table-select-wrapper">
+                                <label>Pilih Meja:</label>
+                                <select id="table-number">
+                                    <option value="Meja 01">Meja 01</option>
+                                    <option value="Meja 02">Meja 02</option>
+                                    <option value="Meja 03">Meja 03</option>
+                                    <option value="Meja 04">Meja 04</option>
+                                    <option value="Meja 05">Meja 05</option>
+                                    <option value="Meja 06">Meja 06</option>
+                                    <option value="Meja 07">Meja 07</option>
+                                    <option value="Meja 08">Meja 08</option>
+                                    <option value="Meja 09">Meja 09</option>
+                                    <option value="Meja 10">Meja 10</option>
+                                </select>
+                            </div>
                         </div>
 
                         <div class="cart-items" id="cart-items">
@@ -139,28 +162,27 @@
                         </div>
 
                         <div class="payment-action">
-                            <div class="form-group" style="gap: 4px;">
-                                <label style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted);">Metode Pembayaran</label>
-                                <select id="payment-method" onchange="switchPaymentMethod()" style="padding: 8px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.9rem; outline: none;">
+                            <div class="form-group payment-method-group">
+                                <label>Metode Pembayaran</label>
+                                <select id="payment-method" onchange="switchPaymentMethod()">
                                     <option value="cash">Cash (Tunai)</option>
                                     <option value="qris">QRIS (QR Code)</option>
                                     <option value="credit">Credit (Kartu)</option>
                                 </select>
                             </div>
 
-                            <!-- Bagian khusus CASH -->
                             <div id="cash-payment-section">
-                                <div class="input-cash" style="margin-top: 8px;">
+                                <div class="input-cash">
                                     <label for="cash-given">Jumlah Uang Tunai (Rp)</label>
                                     <input type="number" id="cash-given" placeholder="Masukkan nominal..." oninput="calculateChange()">
                                 </div>
-                                <div class="summary-row change-row" style="margin-top: 6px;">
+                                <div class="summary-row change-row">
                                     <span>Kembalian</span>
                                     <span id="change-amount">Rp 0</span>
                                 </div>
                             </div>
 
-                            <button class="btn-pay" id="btn-pay" onclick="processPayment()" disabled style="margin-top: 4px;">Proses Pembayaran</button>
+                            <button class="btn-pay" id="btn-pay" onclick="processPayment()" disabled>Proses Pembayaran</button>
                         </div>
                     </div>
                 </div>
@@ -224,7 +246,7 @@
                     </div>
                 </div>
 
-                <div class="table-card" style="margin-top: 24px;">
+                <div class="table-card report-table-card">
                     <h3>Riwayat Transaksi</h3>
                     <table class="data-table" style="margin-top: 16px;">
                         <thead>
@@ -267,27 +289,69 @@
         </main>
     </div>
 
-<!-- MODAL KONFIRMASI QRIS / CREDIT -->
-<div class="modal" id="qris-modal">
-    <div class="modal-content" style="text-align: center; max-width: 380px; padding: 24px;">
-        <div class="modal-header" style="border: none; padding: 0 0 12px 0;">
-            <h3 id="qris-title">Scan QRIS Pembayaran</h3>
-            <button class="close-btn" onclick="closeQrisModal()">&times;</button>
+    <!-- MODAL BUKA SHIFT (MODAL AWAL) -->
+    <div class="modal" id="shift-modal" data-persistent="true">
+        <div class="modal-content" style="max-width: 400px; padding: 24px;">
+            <div class="modal-header" style="border: none; padding: 0 0 12px 0;">
+                <h3>Buka Shift Kasir (Modal Awal)</h3>
+            </div>
+            <form onsubmit="startShift(event)">
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label>Masukkan Jumlah Uang Kas Awal di Laci (Rp)</label>
+                    <input type="number" id="initial-cash" min="0" required placeholder="Contoh: 500000">
+                </div>
+                <button type="submit" class="btn-primary" style="width: 100%; justify-content: center;">Mulai Shift</button>
+            </form>
         </div>
-        <div id="qris-content-body">
-            <div style="background: #f8fafc; padding: 16px; border-radius: 12px; margin-bottom: 12px; border: 1px solid var(--border);">
-                <!-- GAMBAR QRIS ASLI ANDA -->
-                <img src="img/qris-asli.jpeg" alt="QRIS Asli Toko" style="width: 200px; height: 200px; object-fit: contain; border-radius: 8px; background: white; padding: 8px; border: 1px solid var(--border);" onerror="this.src='https://via.placeholder.com/200?text=QRIS+Asli+Tidak+Ditemukan'">
-                <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 8px;">Silakan scan menggunakan M-Banking atau E-Wallet</p>
+    </div>
+
+    <!-- MODAL TUTUP BUKU / SHIFT (REKONSILIASI) -->
+    <div class="modal" id="close-shift-modal">
+        <div class="modal-content" style="max-width: 420px; padding: 24px;">
+            <div class="modal-header">
+                <h3>Tutup Buku & Rekonsiliasi Kasir</h3>
+                <button class="close-btn" onclick="closeShiftModal()">&times;</button>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 16px;">
+                <div class="summary-row"><span>Modal Awal Laci:</span> <span id="rekap-initial">Rp 0</span></div>
+                <div class="summary-row"><span>Total Penjualan Cash:</span> <span id="rekap-cash-sales">Rp 0</span></div>
+                <div class="summary-row total"><span>Total Kas Seharusnya di Laci:</span> <span id="rekap-expected">Rp 0</span></div>
+                
+                <div class="form-group" style="margin-top: 8px;">
+                    <label>Hitung Fisik Uang Tunai di Laci (Rp)</label>
+                    <input type="number" id="actual-cash" min="0" placeholder="Masukkan total uang fisik..." oninput="calculateDifference()">
+                </div>
+                
+                <div class="summary-row" style="font-weight: 600;">
+                    <span>Selisih (Kurang / Lebih):</span>
+                    <span id="rekap-diff">Rp 0</span>
+                </div>
+
+                <button class="btn-primary" style="width: 100%; justify-content: center; margin-top: 12px;" onclick="finalizeCloseShift()">Konfirmasi Tutup Buku</button>
             </div>
         </div>
-        <div style="margin-bottom: 16px;">
-            <span style="font-size: 0.85rem; color: var(--text-muted); display: block;">Total Tagihan Pembayaran:</span>
-            <h3 id="qris-total-amount" style="color: var(--primary); font-size: 1.4rem; font-weight: 700;">Rp 0</h3>
-        </div>
-        <button class="btn-primary" style="width: 100%; justify-content: center;" onclick="confirmQrisPayment()">Konfirmasi Pembayaran Berhasil</button>
     </div>
-</div>
+
+    <!-- MODAL KONFIRMASI QRIS ASLI -->
+    <div class="modal" id="qris-modal">
+        <div class="modal-content qris-modal-content">
+            <div class="modal-header qris-modal-header">
+                <h3 id="qris-title">Scan QRIS Pembayaran</h3>
+                <button class="close-btn" onclick="closeQrisModal()">&times;</button>
+            </div>
+            <div id="qris-content-body">
+                <div class="qris-img-box">
+                    <img src="qris-asli.jpg" alt="QRIS Asli Toko" class="qris-real-img" onerror="this.src='https://via.placeholder.com/200?text=QRIS+Asli+Tidak+Ditemukan'">
+                    <p>Silakan scan menggunakan M-Banking atau E-Wallet</p>
+                </div>
+            </div>
+            <div class="qris-amount-box">
+                <span>Total Tagihan Pembayaran:</span>
+                <h3 id="qris-total-amount">Rp 0</h3>
+            </div>
+            <button class="btn-primary" style="width: 100%; justify-content: center;" onclick="confirmQrisPayment()">Konfirmasi Pembayaran Berhasil</button>
+        </div>
+    </div>
 
     <!-- MODAL PRODUK -->
     <div class="modal" id="product-modal">
@@ -375,6 +439,7 @@
             <p>Jl. Kopi Nikmat No. 123, Malang</p>
             <p id="receipt-trx-id">ID: TRX-000000</p>
             <p id="receipt-time">27/10/2026 10:00</p>
+            <p id="receipt-order-info">Dine-In | Meja 01</p>
             <p id="receipt-pay-method">Metode: Cash</p>
         </div>
         <div class="receipt-divider">--------------------------------</div>
