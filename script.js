@@ -199,7 +199,7 @@ function renderProducts() {
 
         const card = document.createElement('div');
         card.className = 'product-card';
-        card.onclick = () => addToCart(product.id);
+        card.onclick = (e) => addToCart(product.id, e);
         card.innerHTML = `
             <img src="${imgSrc}" class="product-img" alt="${product.name}" onerror="this.src='https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=300'">
             <div class="product-info">
@@ -228,13 +228,43 @@ function filterProducts() {
 }
 
 // --- KERANJANG BELANJA ---
-function addToCart(productId) {
+// --- NOTIFIKASI KILAT (TOAST) ---
+function showToast(message) {
+    // Buat elemen toast jika belum ada di HTML
+    let toast = document.getElementById('toast-notification');
+    if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'toast-notification';
+        toast.innerHTML = `<i class="fa-solid fa-circle-check"></i> <span id="toast-message"></span>`;
+        document.body.appendChild(toast);
+    }
+
+    document.getElementById('toast-message').innerText = message;
+    toast.classList.add('show');
+
+    // Hilangkan otomatis setelah 2 detik
+    setTimeout(() => {
+        toast.classList.remove('show');
+    }, 2000);
+}
+
+// --- INTERAKSI TAMBAH KE KERANJANG DENGAN ANIMASI ---
+function addToCart(productId, event) {
     const product = products.find(p => p.id === productId);
     if (!product) return;
 
     if (product.stock <= 0) {
         alert('Stok produk habis!');
         return;
+    }
+
+    // Efek animasi klik pada card produk
+    // Cari elemen card yang diklik
+    event = event || window.event;
+    const card = event.currentTarget;
+    if (card) {
+        card.classList.add('clicked');
+        setTimeout(() => card.classList.remove('clicked'), 200);
     }
 
     const cartItem = cart.find(item => item.id === productId);
@@ -247,8 +277,13 @@ function addToCart(productId) {
     } else {
         cart.push({ id: product.id, name: product.name, price: product.price, qty: 1 });
     }
+
     renderCart();
+    
+    // Tampilkan notifikasi interaktif
+    showToast(`${product.name} ditambahkan ke keranjang`);
 }
+
 
 function updateCartQty(productId, change) {
     const cartItem = cart.find(item => item.id === productId);
