@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aplikasi Kasir Kafe (POS)</title>
+    <!-- FontAwesome untuk ikon -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- HALAMAN LOGIN INTERAKTIF -->
+    <div id="login-container" class="login-container">
+        <div class="login-backdrop-shapes">
+            <span></span>
+            <span></span>
+        </div>
+        <div class="login-card" id="login-card">
+            <div class="login-header">
+                <div class="login-icon-box">
+                    <i class="fa-solid fa-mug-hot"></i>
+                </div>
+                <h2>Selamat Datang</h2>
+                <p>Silakan masuk ke sistem Kafe POS</p>
+            </div>
+            
+            <form id="login-form" onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <label>Username</label>
+                    <div class="input-with-icon">
+                        <i class="fa-solid fa-user"></i>
+                        <input type="text" id="login-username" required placeholder="Masukkan username...">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <div class="input-with-icon">
+                        <i class="fa-solid fa-lock"></i>
+                        <input type="password" id="login-password" required placeholder="Masukkan password...">
+                        <button type="button" class="btn-toggle-password" onclick="togglePasswordVisibility()">
+                            <i class="fa-solid fa-eye" id="eye-icon"></i>
+                        </button>
+                    </div>
+                </div>
+                <button type="submit" class="btn-login-submit">
+                    <span>Masuk Sekarang</span>
+                    <i class="fa-solid fa-arrow-right"></i>
+                </button>
+            </form>
+
+            <div class="login-hint">
+                <p class="hint-title"><i class="fa-solid fa-circle-info"></i> Akun Demo Cepat:</p>
+                <div class="hint-grid">
+                    <div><span>Owner:</span> <code>owner / 123</code></div>
+                    <div><span>Manager:</span> <code>manager / 123</code></div>
+                    <div><span>Kasir:</span> <code>kasir / 123</code></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- APLIKASI UTAMA -->
+    <div id="app-container" class="app-container" style="display: none;">
+        <!-- SIDEBAR NAVIGASI -->
+        <aside class="sidebar">
+            <div class="sidebar-brand">
+                <i class="fa-solid fa-mug-hot"></i>
+                <h2>Kafe POS</h2>
+            </div>
+            <ul class="sidebar-menu" id="sidebar-menu"></ul>
+            <div class="sidebar-user">
+                <div class="user-info">
+                    <span id="logged-user-name">Nama User</span>
+                    <span id="logged-user-role" class="badge-role">Role</span>
+                </div>
+                <button class="btn-logout" onclick="handleLogout()" title="Keluar"><i class="fa-solid fa-right-from-bracket"></i></button>
+            </div>
+        </aside>
+
+        <!-- KONTEN UTAMA -->
+        <main class="main-content">
+            
+            <!-- TAB 1: KASIR (POS) -->
+            <section id="tab-pos" class="tab-pane active">
+                <header class="top-header">
+                    <h1>Kasir & Pemesanan</h1>
+                    <div class="current-date" id="current-date"></div>
+                </header>
+
+                <div class="pos-container">
+                    <!-- Sisi Kiri: Katalog Produk -->
+                    <div class="product-catalog">
+                        <div class="catalog-header">
+                            <div class="search-box">
+                                <i class="fa-solid fa-search"></i>
+                                <input type="text" id="search-product" placeholder="Cari menu kafe..." oninput="filterProducts()">
+                            </div>
+                            <div class="category-filters" id="category-filters">
+                                <button class="cat-btn active" onclick="filterCategory('All')">Semua</button>
+                                <button class="cat-btn" onclick="filterCategory('Kopi')">Kopi</button>
+                                <button class="cat-btn" onclick="filterCategory('Non-Kopi')">Non-Kopi</button>
+                                <button class="cat-btn" onclick="filterCategory('Makanan')">Makanan</button>
+                                <button class="cat-btn" onclick="filterCategory('Snack')">Snack</button>
+                            </div>
+                        </div>
+                        <div class="product-grid" id="product-grid"></div>
+                    </div>
+
+                    <!-- Sisi Kanan: Keranjang & Pembayaran -->
+                    <div class="cart-section">
+                        <div class="cart-header">
+                            <h3><i class="fa-solid fa-cart-shopping"></i> Pesanan Saat Ini</h3>
+                            <button class="btn-clear" onclick="clearCart()">Kosongkan</button>
+                        </div>
+
+                        <div class="cart-items" id="cart-items">
+                            <div class="empty-cart">Keranjang masih kosong</div>
+                        </div>
+
+                        <div class="cart-summary">
+                            <div class="summary-row">
+                                <span>Subtotal</span>
+                                <span id="subtotal-price">Rp 0</span>
+                            </div>
+                            <div class="summary-row">
+                                <span>Diskon (%)</span>
+                                <div class="discount-input-wrapper">
+                                    <input type="number" id="discount-percent" min="0" max="100" value="0" oninput="calculateTotal()">
+                                    <span>%</span>
+                                </div>
+                            </div>
+                            <div class="summary-row total">
+                                <span>Total</span>
+                                <span id="grand-total">Rp 0</span>
+                            </div>
+                        </div>
+
+                        <div class="payment-action">
+                            <div class="form-group" style="gap: 4px;">
+                                <label style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted);">Metode Pembayaran</label>
+                                <select id="payment-method" onchange="switchPaymentMethod()" style="padding: 8px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.9rem; outline: none;">
+                                    <option value="cash">Cash (Tunai)</option>
+                                    <option value="qris">QRIS (QR Code)</option>
+                                    <option value="credit">Credit (Kartu)</option>
+                                </select>
+                            </div>
+
+                            <!-- Bagian khusus CASH -->
+                            <div id="cash-payment-section">
+                                <div class="input-cash" style="margin-top: 8px;">
+                                    <label for="cash-given">Jumlah Uang Tunai (Rp)</label>
+                                    <input type="number" id="cash-given" placeholder="Masukkan nominal..." oninput="calculateChange()">
+                                </div>
+                                <div class="summary-row change-row" style="margin-top: 6px;">
+                                    <span>Kembalian</span>
+                                    <span id="change-amount">Rp 0</span>
+                                </div>
+                            </div>
+
+                            <button class="btn-pay" id="btn-pay" onclick="processPayment()" disabled style="margin-top: 4px;">Proses Pembayaran</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 2: MANAJEMEN PRODUK -->
+            <section id="tab-products" class="tab-pane">
+                <header class="top-header">
+                    <h1>Manajemen Produk</h1>
+                    <button class="btn-primary" onclick="openProductModal()"><i class="fa-solid fa-plus"></i> Tambah Produk</button>
+                </header>
+
+                <div class="table-card">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Gambar</th>
+                                <th>Nama Produk</th>
+                                <th>Kategori</th>
+                                <th>Harga</th>
+                                <th>Stok</th>
+                                <th>Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="product-table-body"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- TAB 3: LAPORAN PENJUALAN HARIAN -->
+            <section id="tab-reports" class="tab-pane">
+                <header class="top-header">
+                    <h1>Laporan Penjualan Harian</h1>
+                    <div class="report-filters">
+                        <input type="date" id="report-date" onchange="renderReports()">
+                        <button class="btn-secondary" onclick="resetTodayReport()"><i class="fa-solid fa-rotate-right"></i> Reset Hari Ini</button>
+                    </div>
+                </header>
+
+                <div class="report-stats">
+                    <div class="stat-card">
+                        <div class="stat-icon bg-blue"><i class="fa-solid fa-receipt"></i></div>
+                        <div class="stat-info">
+                            <span class="stat-label">Total Transaksi</span>
+                            <h3 id="stat-total-trx">0</h3>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon bg-green"><i class="fa-solid fa-wallet"></i></div>
+                        <div class="stat-info">
+                            <span class="stat-label">Pendapatan Kotor</span>
+                            <h3 id="stat-gross-income">Rp 0</h3>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon bg-orange"><i class="fa-solid fa-tag"></i></div>
+                        <div class="stat-info">
+                            <span class="stat-label">Total Diskon Diberikan</span>
+                            <h3 id="stat-total-discount">Rp 0</h3>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="table-card" style="margin-top: 24px;">
+                    <h3>Riwayat Transaksi</h3>
+                    <table class="data-table" style="margin-top: 16px;">
+                        <thead>
+                            <tr>
+                                <th>ID Transaksi</th>
+                                <th>Waktu</th>
+                                <th>Metode</th>
+                                <th>Item Pesanan</th>
+                                <th>Total Bayar</th>
+                                <th>Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="report-table-body"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- TAB 4: MANAJEMEN USER -->
+            <section id="tab-users" class="tab-pane">
+                <header class="top-header">
+                    <h1>Manajemen Pengguna (Karyawan / Admin)</h1>
+                    <button class="btn-primary" onclick="openUserModal()"><i class="fa-solid fa-user-plus"></i> Tambah Akun</button>
+                </header>
+
+                <div class="table-card">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Nama Lengkap</th>
+                                <th>Username</th>
+                                <th>Role / Hak Akses</th>
+                                <th>Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="user-table-body"></tbody>
+                    </table>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- MODAL KONFIRMASI QRIS / CREDIT -->
+    <div class="modal" id="qris-modal">
+        <div class="modal-content" style="text-align: center; max-width: 360px; padding: 24px;">
+            <div class="modal-header" style="border: none; padding: 0 0 12px 0;">
+                <h3 id="qris-title">Scan QRIS Pembayaran</h3>
+                <button class="close-btn" onclick="closeQrisModal()">&times;</button>
+            </div>
+            <div id="qris-content-body">
+                <div style="background: #f8fafc; padding: 20px; border-radius: 12px; margin-bottom: 16px; border: 1px dashed var(--border);">
+                    <i class="fa-solid fa-qrcode" style="font-size: 100px; color: var(--text-main);"></i>
+                    <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 8px;">Silakan scan QR code menggunakan aplikasi E-Wallet atau M-Banking Anda</p>
+                </div>
+            </div>
+            <h3 id="qris-total-amount" style="color: var(--primary); margin-bottom: 16px;">Rp 0</h3>
+            <button class="btn-primary" style="width: 100%; justify-content: center;" onclick="confirmQrisPayment()">Konfirmasi Pembayaran Berhasil</button>
+        </div>
+    </div>
+
+    <!-- MODAL PRODUK -->
+    <div class="modal" id="product-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modal-title">Tambah Produk Baru</h3>
+                <button class="close-btn" onclick="closeProductModal()">&times;</button>
+            </div>
+            <form id="product-form" onsubmit="saveProduct(event)">
+                <input type="hidden" id="product-id">
+                <div class="form-group">
+                    <label>Nama Produk</label>
+                    <input type="text" id="form-name" required placeholder="Contoh: Caffe Latte">
+                </div>
+                <div class="form-group">
+                    <label>Kategori</label>
+                    <select id="form-category" required>
+                        <option value="Kopi">Kopi</option>
+                        <option value="Non-Kopi">Non-Kopi</option>
+                        <option value="Makanan">Makanan</option>
+                        <option value="Snack">Snack</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Harga (Rp)</label>
+                    <input type="number" id="form-price" min="0" required placeholder="Contoh: 25000">
+                </div>
+                <div class="form-group">
+                    <label>Stok</label>
+                    <input type="number" id="form-stock" min="0" required placeholder="Contoh: 50">
+                </div>
+                <div class="form-group">
+                    <label>URL Gambar (Opsional)</label>
+                    <input type="text" id="form-image" placeholder="https://images.unsplash.com/...">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary" onclick="closeProductModal()">Batal</button>
+                    <button type="submit" class="btn-primary">Simpan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL USER -->
+    <div class="modal" id="user-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="user-modal-title">Tambah Akun Baru</h3>
+                <button class="close-btn" onclick="closeUserModal()">&times;</button>
+            </div>
+            <form id="user-form" onsubmit="saveUser(event)">
+                <input type="hidden" id="user-edit-username">
+                <div class="form-group">
+                    <label>Nama Lengkap</label>
+                    <input type="text" id="form-user-name" required placeholder="Contoh: Budi Karyawan">
+                </div>
+                <div class="form-group">
+                    <label>Username</label>
+                    <input type="text" id="form-user-username" required placeholder="Contoh: budi123">
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="form-user-password" required placeholder="Password...">
+                </div>
+                <div class="form-group">
+                    <label>Role / Hak Akses</label>
+                    <select id="form-user-role" required>
+                        <option value="kasir">Karyawan (Kasir)</option>
+                        <option value="admin">Admin (Manager)</option>
+                        <option value="superadmin">Super Admin (Owner)</option>
+                    </select>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary" onclick="closeUserModal()">Batal</button>
+                    <button type="submit" class="btn-primary">Simpan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL STRUK (CETAK) -->
+    <div class="receipt-print-area" id="receipt-print-area">
+        <div class="receipt-header">
+            <h3>KAFE KITA</h3>
+            <p>Jl. Kopi Nikmat No. 123, Malang</p>
+            <p id="receipt-trx-id">ID: TRX-000000</p>
+            <p id="receipt-time">27/10/2026 10:00</p>
+            <p id="receipt-pay-method">Metode: Cash</p>
+        </div>
+        <div class="receipt-divider">--------------------------------</div>
+        <div class="receipt-items" id="receipt-items-list"></div>
+        <div class="receipt-divider">--------------------------------</div>
+        <div class="receipt-summary">
+            <div class="r-row"><span>Subtotal:</span> <span id="r-subtotal">Rp 0</span></div>
+            <div class="r-row"><span>Diskon:</span> <span id="r-discount">Rp 0</span></div>
+            <div class="r-row total"><span>Total:</span> <span id="r-total">Rp 0</span></div>
+            <div class="r-row" id="r-cash-row"><span>Tunai:</span> <span id="r-cash">Rp 0</span></div>
+            <div class="r-row" id="r-change-row"><span>Kembalian:</span> <span id="r-change">Rp 0</span></div>
+        </div>
+        <div class="receipt-divider">--------------------------------</div>
+        <div class="receipt-footer">
+            <p>Terima Kasih Atas Kunjungan Anda!</p>
+            <p>Silakan Datang Kembali</p>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
