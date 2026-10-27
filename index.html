@@ -267,23 +267,27 @@
         </main>
     </div>
 
-    <!-- MODAL KONFIRMASI QRIS / CREDIT -->
-    <div class="modal" id="qris-modal">
-        <div class="modal-content" style="text-align: center; max-width: 360px; padding: 24px;">
-            <div class="modal-header" style="border: none; padding: 0 0 12px 0;">
-                <h3 id="qris-title">Scan QRIS Pembayaran</h3>
-                <button class="close-btn" onclick="closeQrisModal()">&times;</button>
-            </div>
-            <div id="qris-content-body">
-                <div style="background: #f8fafc; padding: 20px; border-radius: 12px; margin-bottom: 16px; border: 1px dashed var(--border);">
-                    <i class="fa-solid fa-qrcode" style="font-size: 100px; color: var(--text-main);"></i>
-                    <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 8px;">Silakan scan QR code menggunakan aplikasi E-Wallet atau M-Banking Anda</p>
-                </div>
-            </div>
-            <h3 id="qris-total-amount" style="color: var(--primary); margin-bottom: 16px;">Rp 0</h3>
-            <button class="btn-primary" style="width: 100%; justify-content: center;" onclick="confirmQrisPayment()">Konfirmasi Pembayaran Berhasil</button>
+<!-- MODAL KONFIRMASI QRIS / CREDIT -->
+<div class="modal" id="qris-modal">
+    <div class="modal-content" style="text-align: center; max-width: 380px; padding: 24px;">
+        <div class="modal-header" style="border: none; padding: 0 0 12px 0;">
+            <h3 id="qris-title">Scan QRIS Pembayaran</h3>
+            <button class="close-btn" onclick="closeQrisModal()">&times;</button>
         </div>
+        <div id="qris-content-body">
+            <div style="background: #f8fafc; padding: 16px; border-radius: 12px; margin-bottom: 12px; border: 1px solid var(--border);">
+                <!-- GAMBAR QRIS ASLI ANDA -->
+                <img src="img/qris-asli.jpeg" alt="QRIS Asli Toko" style="width: 200px; height: 200px; object-fit: contain; border-radius: 8px; background: white; padding: 8px; border: 1px solid var(--border);" onerror="this.src='https://via.placeholder.com/200?text=QRIS+Asli+Tidak+Ditemukan'">
+                <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 8px;">Silakan scan menggunakan M-Banking atau E-Wallet</p>
+            </div>
+        </div>
+        <div style="margin-bottom: 16px;">
+            <span style="font-size: 0.85rem; color: var(--text-muted); display: block;">Total Tagihan Pembayaran:</span>
+            <h3 id="qris-total-amount" style="color: var(--primary); font-size: 1.4rem; font-weight: 700;">Rp 0</h3>
+        </div>
+        <button class="btn-primary" style="width: 100%; justify-content: center;" onclick="confirmQrisPayment()">Konfirmasi Pembayaran Berhasil</button>
     </div>
+</div>
 
     <!-- MODAL PRODUK -->
     <div class="modal" id="product-modal">
