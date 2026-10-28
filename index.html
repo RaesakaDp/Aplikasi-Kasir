@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aplikasi Kasir Kafe (POS)</title>
+    <title>Kenangan Mantan - Aplikasi Kasir Kafe (POS)</title>
     <!-- FontAwesome untuk ikon -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Google Fonts Inter -->
@@ -12,7 +12,7 @@
 </head>
 <body>
 
-    <!-- HALAMAN LOGIN INTERAKTIF -->
+    <!-- HALAMAN LOGIN ESTETIK TEMA KAFE -->
     <div id="login-container" class="login-container">
         <div class="login-backdrop-shapes">
             <span></span>
@@ -20,11 +20,11 @@
         </div>
         <div class="login-card" id="login-card">
             <div class="login-header">
-                <div class="login-icon-box">
+                <div class="cafe-logo-badge">
                     <i class="fa-solid fa-mug-hot"></i>
                 </div>
-                <h2>Selamat Datang</h2>
-                <p>Silakan masuk ke sistem Kafe POS</p>
+                <h2>Kenangan Mantan.</h2>
+                <p>Silakan masuk untuk mengelola sistem kasir</p>
             </div>
             
             <form id="login-form" onsubmit="handleLogin(event)">
@@ -68,7 +68,7 @@
         <aside class="sidebar">
             <div class="sidebar-brand">
                 <i class="fa-solid fa-mug-hot"></i>
-                <h2>Kafe POS</h2>
+                <h2>Kenangan Mantan</h2>
             </div>
             <ul class="sidebar-menu" id="sidebar-menu"></ul>
             <div class="sidebar-user">
@@ -116,7 +116,7 @@
                             <button class="btn-clear" onclick="clearCart()">Kosongkan</button>
                         </div>
 
-                        <!-- FITUR: MANAJEMEN MEJA & TIPE PESANAN -->
+                        <!-- MANAJEMEN MEJA & TIPE PESANAN -->
                         <div class="order-type-container">
                             <div class="order-type-buttons">
                                 <button type="button" class="type-btn active" id="type-dinein" onclick="setOrderType('Dine-In')">Dine-In</button>
@@ -262,6 +262,24 @@
                         <tbody id="report-table-body"></tbody>
                     </table>
                 </div>
+
+                <!-- RIWAYAT SHIFT KASIR (UNTUK MANAGER / OWNER) -->
+                <div class="table-card" style="margin-top: 24px;">
+                    <h3>Riwayat Tutup Shift Kasir</h3>
+                    <table class="data-table" style="margin-top: 16px;">
+                        <thead>
+                            <tr>
+                                <th>Waktu Tutup</th>
+                                <th>Nama Kasir</th>
+                                <th>Modal Awal</th>
+                                <th>Penjualan Cash</th>
+                                <th>Faktual Laci</th>
+                                <th>Selisih</th>
+                            </tr>
+                        </thead>
+                        <tbody id="shift-report-table-body"></tbody>
+                    </table>
+                </div>
             </section>
 
             <!-- TAB 4: MANAJEMEN USER -->
@@ -289,7 +307,7 @@
         </main>
     </div>
 
-    <!-- MODAL BUKA SHIFT (MODAL AWAL) -->
+    <!-- MODAL BUKA SHIFT (KHUSUS KASIR) -->
     <div class="modal" id="shift-modal" data-persistent="true">
         <div class="modal-content" style="max-width: 400px; padding: 24px;">
             <div class="modal-header" style="border: none; padding: 0 0 12px 0;">
@@ -327,7 +345,7 @@
                     <span id="rekap-diff">Rp 0</span>
                 </div>
 
-                <button class="btn-primary" style="width: 100%; justify-content: center; margin-top: 12px;" onclick="finalizeCloseShift()">Konfirmasi Tutup Buku</button>
+                <button class="btn-primary" style="width: 100%; justify-content: center; margin-top: 12px;" onclick="finalizeCloseShift()">Konfirmasi Tutup Buku & Cetak</button>
             </div>
         </div>
     </div>
@@ -432,11 +450,11 @@
         </div>
     </div>
 
-    <!-- MODAL STRUK (CETAK) -->
+    <!-- STRUK PRINT FORMAT (TRANSAKSI) -->
     <div class="receipt-print-area" id="receipt-print-area">
         <div class="receipt-header">
-            <h3>KAFE KITA</h3>
-            <p>Jl. Kopi Nikmat No. 123, Malang</p>
+            <h3>KENANGAN MANTAN</h3>
+            <p>Jl. Kenangan Indah No. 123, Malang</p>
             <p id="receipt-trx-id">ID: TRX-000000</p>
             <p id="receipt-time">27/10/2026 10:00</p>
             <p id="receipt-order-info">Dine-In | Meja 01</p>
@@ -456,6 +474,30 @@
         <div class="receipt-footer">
             <p>Terima Kasih Atas Kunjungan Anda!</p>
             <p>Silakan Datang Kembali</p>
+        </div>
+    </div>
+
+    <!-- STRUK PRINT FORMAT (LAPORAN SHIFT) -->
+    <div class="receipt-print-area" id="shift-print-area">
+        <div class="receipt-header">
+            <h3>LAPORAN TUTUP SHIFT</h3>
+            <p>KENANGAN MANTAN - MALANG</p>
+            <p id="print-shift-cashier">Kasir: -</p>
+            <p id="print-shift-time">Waktu: -</p>
+        </div>
+        <div class="receipt-divider">--------------------------------</div>
+        <div class="receipt-summary">
+            <div class="r-row"><span>Modal Awal:</span> <span id="print-shift-initial">Rp 0</span></div>
+            <div class="r-row"><span>Penjualan Cash:</span> <span id="print-shift-sales">Rp 0</span></div>
+            <div class="r-row total"><span>Seharusnya:</span> <span id="print-shift-expected">Rp 0</span></div>
+            <div class="r-row"><span>Faktual Laci:</span> <span id="print-shift-actual">Rp 0</span></div>
+            <div class="r-row total"><span>Selisih:</span> <span id="print-shift-diff">Rp 0</span></div>
+        </div>
+        <div class="receipt-divider">--------------------------------</div>
+        <div class="receipt-footer">
+            <p>Tanda Tangan Kasir,</p>
+            <br><br>
+            <p>( __________________ )</p>
         </div>
     </div>
 

@@ -21,6 +21,7 @@ let products = JSON.parse(localStorage.getItem('cafe_products')) || defaultProdu
 let users = JSON.parse(localStorage.getItem('cafe_users')) || defaultUsers;
 let currentUser = JSON.parse(localStorage.getItem('cafe_current_user')) || null;
 let activeShift = JSON.parse(localStorage.getItem('cafe_active_shift')) || null;
+let shiftHistory = JSON.parse(localStorage.getItem('cafe_shift_history')) || [];
 
 let cart = [];
 let transactions = JSON.parse(localStorage.getItem('cafe_transactions')) || [];
@@ -71,7 +72,7 @@ function handleLogin(e) {
 }
 
 function handleLogout() {
-    if (activeShift) {
+    if (activeShift && currentUser.role === 'kasir') {
         if (!confirm('Anda belum melakukan tutup buku/shift. Yakin ingin keluar?')) {
             return;
         }
@@ -99,8 +100,8 @@ function showApp() {
     renderProducts();
     switchTab('pos');
 
-    // Cek apakah shift aktif sudah dibuka
-    if (!activeShift) {
+    // HANYA KASIR yang wajib mengisi modal awal shift laci
+    if (currentUser.role === 'kasir' && !activeShift) {
         document.getElementById('shift-modal').classList.add('active');
     }
 }
@@ -147,12 +148,14 @@ function setupSidebarMenu() {
         `;
     }
 
-    // Menu Tutup Buku / Shift untuk semua user aktif
-    menu.innerHTML += `
-        <li onclick="openCloseShiftModal()">
-            <i class="fa-solid fa-vault"></i> Tutup Buku / Shift
-        </li>
-    `;
+    // HANYA KASIR yang melihat menu Tutup Buku / Shift di sidebar
+    if (currentUser.role === 'kasir') {
+        menu.innerHTML += `
+            <li onclick="openCloseShiftModal()">
+                <i class="fa-solid fa-vault"></i> Tutup Buku / Shift
+            </li>
+        `;
+    }
 }
 
 // FORMAT RUPIAH
@@ -275,12 +278,46 @@ function finalizeCloseShift() {
     }
 
     const diff = actualCash - window.currentExpectedCash;
-    alert(`Tutup buku berhasil!\nModal Awal: ${formatRupiah(activeShift.initialCash)}\nSeharusnya di Laci: ${formatRupiah(window.currentExpectedCash)}\nFaktual: ${formatRupiah(actualCash)}\nSelisih: ${formatRupiah(diff)}`);
+    const todayStr = new Date().toISOString();
+
+    const shiftReportData = {
+        cashier: activeShift.cashier,
+        startTime: activeShift.startTime,
+        closeTime: todayStr,
+        initialCash: activeShift.initialCash,
+        expectedCash: window.currentExpectedCash,
+        actualCash: actualCash,
+        difference: diff
+    };
+
+    shiftHistory.push(shiftReportData);
+    localStorage.setItem('cafe_shift_history', JSON.stringify(shiftHistory));
+
+    prepareShiftReceiptForPrint(shiftReportData);
+    
+    document.getElementById('receipt-print-area').style.display = 'none';
+    document.getElementById('shift-print-area').style.display = 'block';
+    window.print();
+    document.getElementById('shift-print-area').style.display = 'none';
+
+    alert(`Tutup buku berhasil direkam dan dicetak!`);
 
     localStorage.removeItem('cafe_active_shift');
     activeShift = null;
     closeShiftModal();
     handleLogout();
+}
+
+function prepareShiftReceiptForPrint(data) {
+    document.getElementById('print-shift-cashier').innerText = `Kasir: ${data.cashier}`;
+    document.getElementById('print-shift-time').innerText = `Waktu: ${new Date(data.closeTime).toLocaleString('id-ID')}`;
+    document.getElementById('print-shift-initial').innerText = formatRupiah(data.initialCash);
+    document.getElementById('print-shift-sales').innerText = formatRupiah(data.expectedCash - data.initialCash);
+    document.getElementById('print-shift-expected').innerText = formatRupiah(data.expectedCash);
+    document.getElementById('print-shift-actual').innerText = formatRupiah(data.actualCash);
+    
+    const diffEl = document.getElementById('print-shift-diff');
+    diffEl.innerText = formatRupiah(data.difference) + (data.difference < 0 ? ' (Kurang)' : data.difference > 0 ? ' (Lebih)' : ' (Pas)');
 }
 
 // --- MANAJEMEN TIPE PESANAN (DINE-IN / TAKEAWAY) ---
@@ -321,7 +358,7 @@ function renderProducts() {
     });
 
     if (filtered.length === 0) {
-        grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: #64748b; margin-top: 40px;">Tidak ada produk ditemukan</div>`;
+        grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: #9ca3af; margin-top: 40px;">Tidak ada produk ditemukan</div>`;
         return;
     }
 
@@ -580,7 +617,10 @@ function executeFinalTransaction(methodName) {
     localStorage.setItem('cafe_transactions', JSON.stringify(transactions));
 
     prepareReceiptForPrint(transaction);
+    document.getElementById('shift-print-area').style.display = 'none';
+    document.getElementById('receipt-print-area').style.display = 'block';
     window.print();
+    document.getElementById('receipt-print-area').style.display = 'none';
 
     cart = [];
     document.getElementById('discount-percent').value = 0;
@@ -801,7 +841,7 @@ function deleteUser(username) {
     }
 }
 
-// --- LAPORAN PENJUALAN HARIAN ---
+// --- LAPORAN PENJUALAN HARIAN & SHIFT ---
 function initReportDate() {
     const todayStr = new Date().toISOString().split('T')[0];
     const dateInput = document.getElementById('report-date');
@@ -835,7 +875,7 @@ function renderReports() {
             <tr>
                 <td><strong>${t.id}</strong><br><small style="color:var(--text-muted)">${t.orderType || 'Dine-In'} (${t.tableInfo || '-'})</small></td>
                 <td>${timeStr}</td>
-                <td><span class="badge-role" style="background:#e0f2fe; color:#0369a1;">${t.paymentMethod || 'Cash'}</span></td>
+                <td><span class="badge-role" style="background:#252528; color:var(--accent-gold);">${t.paymentMethod || 'Cash'}</span></td>
                 <td style="max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${itemsSummary}">${itemsSummary}</td>
                 <td><strong>${formatRupiah(t.grandTotal)}</strong></td>
                 <td>
@@ -852,6 +892,36 @@ function renderReports() {
     document.getElementById('stat-total-trx').innerText = totalTrx;
     document.getElementById('stat-gross-income').innerText = formatRupiah(grossIncome);
     document.getElementById('stat-total-discount').innerText = formatRupiah(totalDiscount);
+
+    // Render tabel riwayat shift kasir
+    const shiftTbody = document.getElementById('shift-report-table-body');
+    if (shiftTbody) {
+        shiftTbody.innerHTML = '';
+        const filteredShifts = shiftHistory.filter(s => s.closeTime.startsWith(selectedDate));
+
+        filteredShifts.forEach(s => {
+            const closeTimeStr = new Date(s.closeTime).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+            let diffLabel = formatRupiah(s.difference);
+            if (s.difference < 0) diffLabel += ' (Kurang)';
+            else if (s.difference > 0) diffLabel += ' (Lebih)';
+            else diffLabel += ' (Pas)';
+
+            shiftTbody.innerHTML += `
+                <tr>
+                    <td>${closeTimeStr}</td>
+                    <td><strong>${s.cashier}</strong></td>
+                    <td>${formatRupiah(s.initialCash)}</td>
+                    <td>${formatRupiah(s.expectedCash - s.initialCash)}</td>
+                    <td>${formatRupiah(s.actualCash)}</td>
+                    <td><strong>${diffLabel}</strong></td>
+                </tr>
+            `;
+        });
+
+        if (filteredShifts.length === 0) {
+            shiftTbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted);">Tidak ada laporan tutup shift pada tanggal ini</td></tr>`;
+        }
+    }
 }
 
 function resetTodayReport() {
