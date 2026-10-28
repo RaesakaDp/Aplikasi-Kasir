@@ -1,4 +1,6 @@
+// ==========================================
 // DATA DEFAULT AWAL
+// ==========================================
 const defaultProducts = [
     { id: 1, name: "Caffe Latte", category: "Kopi", price: 28000, stock: 50, image: "https://images.unsplash.com/photo-1541167760496-1628856ab772?w=300" },
     { id: 2, name: "Cappuccino", category: "Kopi", price: 28000, stock: 40, image: "https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=300" },
@@ -16,19 +18,28 @@ const defaultUsers = [
     { name: "Kasir Shift 1", username: "kasir", password: "123", role: "kasir" }
 ];
 
+// ==========================================
 // STATE APLIKASI
+// ==========================================
 let products = JSON.parse(localStorage.getItem('cafe_products')) || defaultProducts;
 let users = JSON.parse(localStorage.getItem('cafe_users')) || defaultUsers;
 let currentUser = JSON.parse(localStorage.getItem('cafe_current_user')) || null;
 let activeShift = JSON.parse(localStorage.getItem('cafe_active_shift')) || null;
 let shiftHistory = JSON.parse(localStorage.getItem('cafe_shift_history')) || [];
+let expenses = JSON.parse(localStorage.getItem('cafe_expenses')) || [];
 
 let cart = [];
 let transactions = JSON.parse(localStorage.getItem('cafe_transactions')) || [];
 let activeCategory = 'All';
 let currentOrderType = 'Dine-In';
 
+let selectedTable = "Meja 01";
+let activeTableSessions = JSON.parse(localStorage.getItem('cafe_active_tables')) || {};
+let selectedProductForVariant = null;
+
+// ==========================================
 // INISIALISASI
+// ==========================================
 document.addEventListener('DOMContentLoaded', () => {
     if (currentUser) {
         showApp();
@@ -37,7 +48,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// --- SISTEM LOGIN INTERAKTIF ---
+// ==========================================
+// AUTENTIKASI & USER
+// ==========================================
 function togglePasswordVisibility() {
     const passwordInput = document.getElementById('login-password');
     const eyeIcon = document.getElementById('eye-icon');
@@ -100,7 +113,6 @@ function showApp() {
     renderProducts();
     switchTab('pos');
 
-    // HANYA KASIR yang wajib mengisi modal awal shift laci
     if (currentUser.role === 'kasir' && !activeShift) {
         document.getElementById('shift-modal').classList.add('active');
     }
@@ -148,7 +160,6 @@ function setupSidebarMenu() {
         `;
     }
 
-    // HANYA KASIR yang melihat menu Tutup Buku / Shift di sidebar
     if (currentUser.role === 'kasir') {
         menu.innerHTML += `
             <li onclick="openCloseShiftModal()">
@@ -158,12 +169,13 @@ function setupSidebarMenu() {
     }
 }
 
-// FORMAT RUPIAH
+// ==========================================
+// UTILITAS UMUM
+// ==========================================
 function formatRupiah(number) {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(number);
 }
 
-// TANGGAL HEADER
 function updateDateDisplay() {
     const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
     const dateStr = new Date().toLocaleDateString('id-ID', options);
@@ -171,7 +183,6 @@ function updateDateDisplay() {
     if (dateEl) dateEl.innerText = dateStr;
 }
 
-// NAVIGASI TAB
 function switchTab(tabId) {
     if (currentUser.role === 'kasir' && tabId !== 'pos') {
         alert('Akses ditolak! Karyawan hanya dapat mengakses menu Kasir.');
@@ -207,7 +218,6 @@ function switchTab(tabId) {
     }
 }
 
-// --- NOTIFIKASI KILAT (TOAST) ---
 function showToast(message) {
     let toast = document.getElementById('toast-notification');
     if (!toast) {
@@ -225,7 +235,136 @@ function showToast(message) {
     }, 2000);
 }
 
-// --- TUTUP BUKU & REKONSILIASI SHIFT ---
+// ==========================================
+// PETTY CASH (PENGELUARAN KAS)
+// ==========================================
+function openExpenseModal() {
+    if (!activeShift) {
+        alert('Anda harus memulai shift kasir terlebih dahulu!');
+        return;
+    }
+    document.getElementById('expense-form').reset();
+    document.getElementById('expense-modal').classList.add('active');
+}
+
+function closeExpenseModal() {
+    document.getElementById('expense-modal').classList.remove('active');
+}
+
+function saveExpense(e) {
+    e.preventDefault();
+    const desc = document.getElementById('expense-desc').value.trim();
+    const amount = parseFloat(document.getElementById('expense-amount').value) || 0;
+
+    if (amount <= 0) {
+        alert('Nominal pengeluaran tidak valid!');
+        return;
+    }
+
+    const expenseRecord = {
+        id: 'EXP-' + Math.floor(100000 + Math.random() * 900000),
+        timestamp: new Date().toISOString(),
+        cashier: currentUser.name,
+        description: desc,
+        amount: amount
+    };
+
+    expenses.push(expenseRecord);
+    localStorage.setItem('cafe_expenses', JSON.stringify(expenses));
+
+    closeExpenseModal();
+    showToast(`Pengeluaran Rp ${amount.toLocaleString('id-ID')} dicatat`);
+}
+
+// ==========================================
+// MANAJEMEN MEJA VISUAL
+// ==========================================
+function openTableModal() {
+    renderVisualTables();
+    document.getElementById('table-modal').classList.add('active');
+}
+
+function closeTableModal() {
+    document.getElementById('table-modal').classList.remove('active');
+}
+
+function renderVisualTables() {
+    const grid = document.getElementById('visual-table-grid');
+    if (!grid) return;
+    grid.innerHTML = '';
+
+    const totalTables = 10;
+    for (let i = 1; i <= totalTables; i++) {
+        const tableName = `Meja ${i < 10 ? '0' + i : i}`;
+        const isOccupied = activeTableSessions[tableName] && activeTableSessions[tableName].length > 0;
+        const statusClass = isOccupied ? 'occupied' : 'available';
+        const statusText = isOccupied ? 'Terisi' : 'Tersedia';
+
+        const card = document.createElement('div');
+        card.className = `table-card-item ${statusClass}`;
+        card.onclick = () => selectVisualTable(tableName);
+        
+        let actionButtonHTML = '';
+        if (isOccupied) {
+            actionButtonHTML = `
+                <div style="display: flex; gap: 4px; margin-top: 6px;">
+                    <button onclick="event.stopPropagation(); resetTableStatus('${tableName}')" style="font-size:0.65rem; background:#ef4444; color:white; border:none; padding:3px 6px; border-radius:4px; cursor:pointer;" title="Kosongkan meja ini">Kosongkan</button>
+                </div>
+            `;
+        } else {
+            actionButtonHTML = `
+                <div style="display: flex; gap: 4px; margin-top: 6px;">
+                    <button onclick="event.stopPropagation(); occupyTableManual('${tableName}')" style="font-size:0.65rem; background:#10b981; color:white; border:none; padding:3px 6px; border-radius:4px; cursor:pointer;" title="Tandai meja terisi manual">Isi Manual</button>
+                </div>
+            `;
+        }
+
+        card.innerHTML = `
+            <i class="fa-solid fa-chair"></i>
+            <span class="table-name">${tableName}</span>
+            <span class="table-status">${statusText}</span>
+            ${actionButtonHTML}
+        `;
+        grid.appendChild(card);
+    }
+}
+
+function selectVisualTable(tableName) {
+    selectedTable = tableName;
+    document.getElementById('current-selected-table').innerText = tableName;
+    
+    if (cart.length > 0) {
+        activeTableSessions[tableName] = [...cart];
+        localStorage.setItem('cafe_active_tables', JSON.stringify(activeTableSessions));
+    }
+
+    closeTableModal();
+    showToast(`${tableName} dipilih`);
+}
+
+function resetTableStatus(tableName) {
+    if (confirm(`Yakin ingin mengosongkan ${tableName}?`)) {
+        if (activeTableSessions[tableName]) {
+            delete activeTableSessions[tableName];
+            localStorage.setItem('cafe_active_tables', JSON.stringify(activeTableSessions));
+            renderVisualTables();
+            showToast(`${tableName} berhasil dikosongkan.`);
+        }
+    }
+}
+
+function occupyTableManual(tableName) {
+    if (confirm(`Tandai ${tableName} sebagai terisi/sedang digunakan?`)) {
+        activeTableSessions[tableName] = [{ name: 'Manual Occupied', price: 0, qty: 1 }];
+        localStorage.setItem('cafe_active_tables', JSON.stringify(activeTableSessions));
+        renderVisualTables();
+        showToast(`${tableName} ditandai terisi.`);
+    }
+}
+
+// ==========================================
+// TUTUP BUKU & REKONSILIASI SHIFT
+// ==========================================
 function openCloseShiftModal() {
     if (!activeShift) {
         alert('Belum ada shift yang aktif.');
@@ -236,7 +375,10 @@ function openCloseShiftModal() {
     const shiftTransactions = transactions.filter(t => t.timestamp.startsWith(todayStr) && t.paymentMethod === 'Cash');
     const totalCashSales = shiftTransactions.reduce((sum, t) => sum + t.grandTotal, 0);
 
-    const expectedCash = activeShift.initialCash + totalCashSales;
+    const shiftExpenses = expenses.filter(e => e.timestamp.startsWith(todayStr));
+    const totalExpenses = shiftExpenses.reduce((sum, e) => sum + e.amount, 0);
+
+    const expectedCash = activeShift.initialCash + totalCashSales - totalExpenses;
 
     document.getElementById('rekap-initial').innerText = formatRupiah(activeShift.initialCash);
     document.getElementById('rekap-cash-sales').innerText = formatRupiah(totalCashSales);
@@ -296,6 +438,7 @@ function finalizeCloseShift() {
     prepareShiftReceiptForPrint(shiftReportData);
     
     document.getElementById('receipt-print-area').style.display = 'none';
+    document.getElementById('kitchen-print-area').style.display = 'none';
     document.getElementById('shift-print-area').style.display = 'block';
     window.print();
     document.getElementById('shift-print-area').style.display = 'none';
@@ -320,7 +463,9 @@ function prepareShiftReceiptForPrint(data) {
     diffEl.innerText = formatRupiah(data.difference) + (data.difference < 0 ? ' (Kurang)' : data.difference > 0 ? ' (Lebih)' : ' (Pas)');
 }
 
-// --- MANAJEMEN TIPE PESANAN (DINE-IN / TAKEAWAY) ---
+// ==========================================
+// TIPE PESANAN & KATALOG PRODUK
+// ==========================================
 function setOrderType(type) {
     currentOrderType = type;
     const btnDineIn = document.getElementById('type-dinein');
@@ -342,7 +487,6 @@ function setOrderType(type) {
     }
 }
 
-// --- RENDER KATALOG PRODUK ---
 function renderProducts() {
     const grid = document.getElementById('product-grid');
     const searchInput = document.getElementById('search-product');
@@ -369,7 +513,7 @@ function renderProducts() {
 
         const card = document.createElement('div');
         card.className = 'product-card';
-        card.onclick = (e) => addToCart(product.id, e);
+        card.onclick = () => openVariantModal(product.id);
         card.innerHTML = `
             <img src="${imgSrc}" class="product-img" alt="${product.name}" onerror="this.src='https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=300'">
             <div class="product-info">
@@ -397,8 +541,10 @@ function filterProducts() {
     renderProducts();
 }
 
-// --- KERANJANG BELANJA ---
-function addToCart(productId, event) {
+// ==========================================
+// VARIAN MENU / MODIFIER LOGIC
+// ==========================================
+function openVariantModal(productId) {
     const product = products.find(p => p.id === productId);
     if (!product) return;
 
@@ -407,29 +553,95 @@ function addToCart(productId, event) {
         return;
     }
 
-    const card = event.currentTarget;
-    if (card) {
-        card.classList.add('clicked');
-        setTimeout(() => card.classList.remove('clicked'), 200);
-    }
+    selectedProductForVariant = product;
+    document.getElementById('variant-product-name').innerText = product.name;
+    document.getElementById('variant-product-id').value = product.id;
+    document.getElementById('variant-size').value = 'Regular';
+    document.getElementById('variant-sugar').value = 'Normal Sugar';
+    
+    document.querySelectorAll('.addon-checkbox').forEach(cb => cb.checked = false);
 
-    const cartItem = cart.find(item => item.id === productId);
-    if (cartItem) {
-        if (cartItem.qty >= product.stock) {
+    updateVariantPricePreview();
+    document.getElementById('variant-modal').classList.add('active');
+}
+
+function closeVariantModal() {
+    document.getElementById('variant-modal').classList.remove('active');
+    selectedProductForVariant = null;
+}
+
+function updateVariantPricePreview() {
+    if (!selectedProductForVariant) return;
+
+    let basePrice = selectedProductForVariant.price;
+    
+    const sizeSelect = document.getElementById('variant-size');
+    const selectedSizeOption = sizeSelect.options[sizeSelect.selectedIndex];
+    const sizeExtra = parseFloat(selectedSizeOption.getAttribute('data-price')) || 0;
+    basePrice += sizeExtra;
+
+    document.querySelectorAll('.addon-checkbox:checked').forEach(cb => {
+        basePrice += parseFloat(cb.getAttribute('data-price')) || 0;
+    });
+
+    document.getElementById('variant-total-price').innerText = formatRupiah(basePrice);
+}
+
+function confirmAddToCartWithVariant() {
+    if (!selectedProductForVariant) return;
+
+    const size = document.getElementById('variant-size').value;
+    const sugar = document.getElementById('variant-sugar').value;
+    
+    let addons = [];
+    let extraPrice = 0;
+    
+    const sizeSelect = document.getElementById('variant-size');
+    extraPrice += parseFloat(sizeSelect.options[sizeSelect.selectedIndex].getAttribute('data-price')) || 0;
+
+    document.querySelectorAll('.addon-checkbox:checked').forEach(cb => {
+        addons.push(cb.value);
+        extraPrice += parseFloat(cb.getAttribute('data-price')) || 0;
+    });
+
+    const finalItemPrice = selectedProductForVariant.price + extraPrice;
+    let variantDescriptionList = [size, sugar, ...addons].join(', ');
+    let uniqueCartName = `${selectedProductForVariant.name} (${variantDescriptionList})`;
+
+    const existingCartItem = cart.find(item => item.id === selectedProductForVariant.id && item.variantDesc === variantDescriptionList);
+
+    if (existingCartItem) {
+        if (existingCartItem.qty >= selectedProductForVariant.stock) {
             alert('Jumlah melebihi stok yang tersedia!');
             return;
         }
-        cartItem.qty++;
+        existingCartItem.qty++;
     } else {
-        cart.push({ id: product.id, name: product.name, price: product.price, qty: 1 });
+        cart.push({
+            id: selectedProductForVariant.id,
+            name: selectedProductForVariant.name,
+            variantDesc: variantDescriptionList,
+            displayName: uniqueCartName,
+            price: finalItemPrice,
+            qty: 1
+        });
     }
 
+    if (currentOrderType === 'Dine-In') {
+        activeTableSessions[selectedTable] = [...cart];
+        localStorage.setItem('cafe_active_tables', JSON.stringify(activeTableSessions));
+    }
+
+    closeVariantModal();
     renderCart();
-    showToast(`${product.name} ditambahkan`);
+    showToast(`${selectedProductForVariant.name} ditambahkan`);
 }
 
-function updateCartQty(productId, change) {
-    const cartItem = cart.find(item => item.id === productId);
+// ==========================================
+// KERANJANG BELANJA (CART)
+// ==========================================
+function updateCartQty(productId, variantDesc, change) {
+    const cartItem = cart.find(item => item.id === productId && item.variantDesc === variantDesc);
     const product = products.find(p => p.id === productId);
     if (!cartItem) return;
 
@@ -440,14 +652,28 @@ function updateCartQty(productId, change) {
     }
 
     if (newQty <= 0) {
-        cart = cart.filter(item => item.id !== productId);
+        cart = cart.filter(item => !(item.id === productId && item.variantDesc === variantDesc));
     } else {
         cartItem.qty = newQty;
     }
+
+    if (currentOrderType === 'Dine-In') {
+        if (cart.length > 0) {
+            activeTableSessions[selectedTable] = [...cart];
+        } else {
+            delete activeTableSessions[selectedTable];
+        }
+        localStorage.setItem('cafe_active_tables', JSON.stringify(activeTableSessions));
+    }
+
     renderCart();
 }
 
 function clearCart() {
+    if (currentOrderType === 'Dine-In' && activeTableSessions[selectedTable]) {
+        delete activeTableSessions[selectedTable];
+        localStorage.setItem('cafe_active_tables', JSON.stringify(activeTableSessions));
+    }
     cart = [];
     renderCart();
 }
@@ -466,15 +692,16 @@ function renderCart() {
     cart.forEach(item => {
         const div = document.createElement('div');
         div.className = 'cart-item';
+        const escapedVariant = item.variantDesc ? item.variantDesc.replace(/'/g, "\\'") : '';
         div.innerHTML = `
             <div class="cart-item-details">
-                <span class="cart-item-name">${item.name}</span>
+                <span class="cart-item-name">${item.displayName || item.name}</span>
                 <span class="cart-item-price">${formatRupiah(item.price)} x ${item.qty}</span>
             </div>
             <div class="cart-item-controls">
-                <button class="qty-btn" onclick="updateCartQty(${item.id}, -1)">-</button>
+                <button class="qty-btn" onclick="updateCartQty(${item.id}, '${escapedVariant}', -1)">-</button>
                 <span>${item.qty}</span>
-                <button class="qty-btn" onclick="updateCartQty(${item.id}, 1)">+</button>
+                <button class="qty-btn" onclick="updateCartQty(${item.id}, '${escapedVariant}', 1)">+</button>
             </div>
         `;
         container.appendChild(div);
@@ -498,7 +725,9 @@ function calculateTotal() {
     switchPaymentMethod();
 }
 
-// --- PEMBAYARAN ---
+// ==========================================
+// PEMBAYARAN & TRANSAKSI
+// ==========================================
 function switchPaymentMethod() {
     const method = document.getElementById('payment-method').value;
     const cashSection = document.getElementById('cash-payment-section');
@@ -589,7 +818,17 @@ function executeFinalTransaction(methodName) {
     const trxId = 'TRX-' + Math.floor(100000 + Math.random() * 900000);
     const now = new Date();
     const timestamp = now.toISOString();
-    const tableNumber = currentOrderType === 'Dine-In' ? document.getElementById('table-number').value : 'Takeaway';
+    const tableNumber = currentOrderType === 'Dine-In' ? selectedTable : 'Takeaway';
+
+    if (currentOrderType === 'Dine-In') {
+        if (activeTableSessions[selectedTable]) {
+            delete activeTableSessions[selectedTable];
+        }
+        if (activeTableSessions[tableNumber]) {
+            delete activeTableSessions[tableNumber];
+        }
+        localStorage.setItem('cafe_active_tables', JSON.stringify(activeTableSessions));
+    }
 
     cart.forEach(cartItem => {
         const prod = products.find(p => p.id === cartItem.id);
@@ -618,9 +857,17 @@ function executeFinalTransaction(methodName) {
 
     prepareReceiptForPrint(transaction);
     document.getElementById('shift-print-area').style.display = 'none';
+    document.getElementById('kitchen-print-area').style.display = 'none';
     document.getElementById('receipt-print-area').style.display = 'block';
     window.print();
-    document.getElementById('receipt-print-area').style.display = 'none';
+
+    if (confirm("Cetak tiket pesanan untuk Dapur / Bar?")) {
+        prepareKitchenReceiptForPrint(transaction);
+        document.getElementById('receipt-print-area').style.display = 'none';
+        document.getElementById('kitchen-print-area').style.display = 'block';
+        window.print();
+        document.getElementById('kitchen-print-area').style.display = 'none';
+    }
 
     cart = [];
     document.getElementById('discount-percent').value = 0;
@@ -629,6 +876,7 @@ function executeFinalTransaction(methodName) {
     switchPaymentMethod();
     renderCart();
     renderProducts();
+    renderVisualTables();
 }
 
 function prepareReceiptForPrint(trx) {
@@ -642,7 +890,7 @@ function prepareReceiptForPrint(trx) {
     itemsList.innerHTML = '';
     trx.items.forEach(i => {
         itemsList.innerHTML += `
-            <div>${i.name}</div>
+            <div>${i.displayName || i.name}</div>
             <div style="display: flex; justify-content: space-between;">
                 <span>${i.qty} x ${formatRupiah(i.price)}</span>
                 <span>${formatRupiah(i.price * i.qty)}</span>
@@ -665,7 +913,26 @@ function prepareReceiptForPrint(trx) {
     }
 }
 
-// --- MANAJEMEN PRODUK ---
+function prepareKitchenReceiptForPrint(trx) {
+    document.getElementById('k-trx-id').innerText = `ID: ${trx.id} (Kasir: ${trx.cashier})`;
+    const dateObj = new Date(trx.timestamp);
+    document.getElementById('k-time').innerText = dateObj.toLocaleString('id-ID');
+    document.getElementById('k-order-info').innerText = `${trx.orderType.toUpperCase()} | ${trx.tableInfo.toUpperCase()}`;
+
+    const itemsList = document.getElementById('kitchen-items-list');
+    itemsList.innerHTML = '';
+    trx.items.forEach(i => {
+        itemsList.innerHTML += `
+            <div style="font-size: 14px; font-weight: bold; margin: 4px 0;">
+                - ${i.displayName || i.name} [ ${i.qty}x ]
+            </div>
+        `;
+    });
+}
+
+// ==========================================
+// MANAJEMEN PRODUK (CRUD)
+// ==========================================
 function renderProductTable() {
     const tbody = document.getElementById('product-table-body');
     if (!tbody) return;
@@ -751,7 +1018,9 @@ function deleteProduct(id) {
     }
 }
 
-// --- MANAJEMEN USER ---
+// ==========================================
+// MANAJEMEN USER (CRUD)
+// ==========================================
 function renderUserTable() {
     const tbody = document.getElementById('user-table-body');
     if (!tbody) return;
@@ -841,7 +1110,9 @@ function deleteUser(username) {
     }
 }
 
-// --- LAPORAN PENJUALAN HARIAN & SHIFT ---
+// ==========================================
+// LAPORAN PENJUALAN & SHIFT
+// ==========================================
 function initReportDate() {
     const todayStr = new Date().toISOString().split('T')[0];
     const dateInput = document.getElementById('report-date');
@@ -869,7 +1140,7 @@ function renderReports() {
         totalDiscount += t.discountAmount;
 
         const timeStr = new Date(t.timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-        const itemsSummary = t.items.map(i => `${i.name} (${i.qty}x)`).join(', ');
+        const itemsSummary = t.items.map(i => `${i.displayName || i.name} (${i.qty}x)`).join(', ');
 
         tbody.innerHTML += `
             <tr>
@@ -893,7 +1164,6 @@ function renderReports() {
     document.getElementById('stat-gross-income').innerText = formatRupiah(grossIncome);
     document.getElementById('stat-total-discount').innerText = formatRupiah(totalDiscount);
 
-    // Render tabel riwayat shift kasir
     const shiftTbody = document.getElementById('shift-report-table-body');
     if (shiftTbody) {
         shiftTbody.innerHTML = '';

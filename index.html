@@ -12,7 +12,9 @@
 </head>
 <body>
 
-    <!-- HALAMAN LOGIN ESTETIK TEMA KAFE -->
+    <!-- ========================================== -->
+    <!-- HALAMAN LOGIN ESTETIK TEMA KAFE            -->
+    <!-- ========================================== -->
     <div id="login-container" class="login-container">
         <div class="login-backdrop-shapes">
             <span></span>
@@ -62,8 +64,11 @@
         </div>
     </div>
 
-    <!-- APLIKASI UTAMA -->
+    <!-- ========================================== -->
+    <!-- APLIKASI UTAMA                             -->
+    <!-- ========================================== -->
     <div id="app-container" class="app-container" style="display: none;">
+        
         <!-- SIDEBAR NAVIGASI -->
         <aside class="sidebar">
             <div class="sidebar-brand">
@@ -113,7 +118,10 @@
                     <div class="cart-section">
                         <div class="cart-header">
                             <h3><i class="fa-solid fa-cart-shopping"></i> Pesanan Saat Ini</h3>
-                            <button class="btn-clear" onclick="clearCart()">Kosongkan</button>
+                            <div style="display: flex; gap: 8px;">
+                                <button class="btn-secondary" style="padding: 2px 8px; font-size: 0.75rem;" onclick="openExpenseModal()" title="Catat Pengeluaran Kas"><i class="fa-solid fa-wallet"></i> Kas Keluar</button>
+                                <button class="btn-clear" onclick="clearCart()">Kosongkan</button>
+                            </div>
                         </div>
 
                         <!-- MANAJEMEN MEJA & TIPE PESANAN -->
@@ -123,19 +131,11 @@
                                 <button type="button" class="type-btn" id="type-takeaway" onclick="setOrderType('Takeaway')">Takeaway</button>
                             </div>
                             <div id="table-select-wrapper" class="table-select-wrapper">
-                                <label>Pilih Meja:</label>
-                                <select id="table-number">
-                                    <option value="Meja 01">Meja 01</option>
-                                    <option value="Meja 02">Meja 02</option>
-                                    <option value="Meja 03">Meja 03</option>
-                                    <option value="Meja 04">Meja 04</option>
-                                    <option value="Meja 05">Meja 05</option>
-                                    <option value="Meja 06">Meja 06</option>
-                                    <option value="Meja 07">Meja 07</option>
-                                    <option value="Meja 08">Meja 08</option>
-                                    <option value="Meja 09">Meja 09</option>
-                                    <option value="Meja 10">Meja 10</option>
-                                </select>
+                                <label>Meja Dipilih:</label>
+                                <div class="selected-table-badge" onclick="openTableModal()">
+                                    <span id="current-selected-table">Meja 01</span>
+                                    <i class="fa-solid fa-chevron-down"></i>
+                                </div>
                             </div>
                         </div>
 
@@ -263,7 +263,7 @@
                     </table>
                 </div>
 
-                <!-- RIWAYAT SHIFT KASIR (UNTUK MANAGER / OWNER) -->
+                <!-- RIWAYAT SHIFT KASIR -->
                 <div class="table-card" style="margin-top: 24px;">
                     <h3>Riwayat Tutup Shift Kasir</h3>
                     <table class="data-table" style="margin-top: 16px;">
@@ -307,7 +307,11 @@
         </main>
     </div>
 
-    <!-- MODAL BUKA SHIFT (KHUSUS KASIR) -->
+    <!-- ========================================== -->
+    <!-- MODAL-MODAL APLIKASI                       -->
+    <!-- ========================================== -->
+
+    <!-- MODAL BUKA SHIFT -->
     <div class="modal" id="shift-modal" data-persistent="true">
         <div class="modal-content" style="max-width: 400px; padding: 24px;">
             <div class="modal-header" style="border: none; padding: 0 0 12px 0;">
@@ -323,7 +327,7 @@
         </div>
     </div>
 
-    <!-- MODAL TUTUP BUKU / SHIFT (REKONSILIASI) -->
+    <!-- MODAL TUTUP BUKU / SHIFT -->
     <div class="modal" id="close-shift-modal">
         <div class="modal-content" style="max-width: 420px; padding: 24px;">
             <div class="modal-header">
@@ -350,7 +354,91 @@
         </div>
     </div>
 
-    <!-- MODAL KONFIRMASI QRIS ASLI -->
+    <!-- MODAL PENGELUARAN KAS (PETTY CASH) -->
+    <div class="modal" id="expense-modal">
+        <div class="modal-content" style="max-width: 400px; padding: 24px;">
+            <div class="modal-header">
+                <h3>Catat Pengeluaran Kas (Petty Cash)</h3>
+                <button class="close-btn" onclick="closeExpenseModal()">&times;</button>
+            </div>
+            <form id="expense-form" onsubmit="saveExpense(event)" style="margin-top: 16px;">
+                <div class="form-group" style="margin-bottom: 12px;">
+                    <label>Keperluan / Keterangan</label>
+                    <input type="text" id="expense-desc" required placeholder="Contoh: Beli es batu / Galon air">
+                </div>
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label>Jumlah Nominal (Rp)</label>
+                    <input type="number" id="expense-amount" min="0" required placeholder="Contoh: 25000">
+                </div>
+                <button type="submit" class="btn-primary" style="width: 100%; justify-content: center;">Simpan Pengeluaran</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL VARIAN MENU / MODIFIER -->
+    <div class="modal" id="variant-modal">
+        <div class="modal-content" style="max-width: 400px; padding: 24px;">
+            <div class="modal-header">
+                <h3 id="variant-product-name">Kustomisasi Menu</h3>
+                <button class="close-btn" onclick="closeVariantModal()">&times;</button>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 16px; margin-top: 16px;">
+                <input type="hidden" id="variant-product-id">
+                
+                <div class="form-group">
+                    <label>Pilih Ukuran (Size)</label>
+                    <select id="variant-size" onchange="updateVariantPricePreview()">
+                        <option value="Regular" data-price="0">Regular (Harga Normal)</option>
+                        <option value="Large" data-price="5000">Large (+ Rp 5.000)</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Level Gula (Sugar Level)</label>
+                    <select id="variant-sugar">
+                        <option value="Normal Sugar">Normal Sugar (100%)</option>
+                        <option value="Less Sugar">Less Sugar (50%)</option>
+                        <option value="No Sugar">No Sugar (0%)</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Tambahan (Add-on)</label>
+                    <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 4px;">
+                        <label style="font-weight: normal; font-size: 0.85rem;"><input type="checkbox" class="addon-checkbox" value="Extra Shot" data-price="6000" onchange="updateVariantPricePreview()"> Extra Shot Espresso (+Rp 6.000)</label>
+                        <label style="font-weight: normal; font-size: 0.85rem;"><input type="checkbox" class="addon-checkbox" value="Extra Jelly" data-price="4000" onchange="updateVariantPricePreview()"> Extra Jelly (+Rp 4.000)</label>
+                    </div>
+                </div>
+
+                <div class="summary-row total" style="margin-top: 8px;">
+                    <span>Total Harga Item:</span>
+                    <span id="variant-total-price">Rp 0</span>
+                </div>
+
+                <button type="button" class="btn-primary" style="width: 100%; justify-content: center; margin-top: 8px;" onclick="confirmAddToCartWithVariant()">Masukkan ke Keranjang</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DENAH MEJA VISUAL -->
+    <div class="modal" id="table-modal">
+        <div class="modal-content" style="max-width: 500px; padding: 24px;">
+            <div class="modal-header">
+                <h3>Pilih Meja / Denah Kafe</h3>
+                <button class="close-btn" onclick="closeTableModal()">&times;</button>
+            </div>
+            <div class="table-legend">
+                <span class="legend-item"><span class="dot available"></span> Tersedia</span>
+                <span class="legend-item"><span class="dot occupied"></span> Terisi</span>
+            </div>
+            <div class="visual-table-grid" id="visual-table-grid"></div>
+            <div class="modal-footer" style="margin-top: 16px;">
+                <button type="button" class="btn-secondary" style="width: 100%; justify-content: center;" onclick="closeTableModal()">Tutup</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL KONFIRMASI QRIS -->
     <div class="modal" id="qris-modal">
         <div class="modal-content qris-modal-content">
             <div class="modal-header qris-modal-header">
@@ -450,7 +538,11 @@
         </div>
     </div>
 
-    <!-- STRUK PRINT FORMAT (TRANSAKSI) -->
+    <!-- ========================================== -->
+    <!-- AREA CETAK STRUK (TERSEMBUNYI)             -->
+    <!-- ========================================== -->
+
+    <!-- STRUK TRANSAKSI PELANGGAN -->
     <div class="receipt-print-area" id="receipt-print-area">
         <div class="receipt-header">
             <h3>KENANGAN MANTAN</h3>
@@ -477,7 +569,23 @@
         </div>
     </div>
 
-    <!-- STRUK PRINT FORMAT (LAPORAN SHIFT) -->
+    <!-- STRUK DAPUR / BAR -->
+    <div class="receipt-print-area" id="kitchen-print-area">
+        <div class="receipt-header">
+            <h3>=== TIKET DAPUR / BAR ===</h3>
+            <p id="k-trx-id">ID: TRX-000000</p>
+            <p id="k-time">27/10/2026 10:00</p>
+            <p id="k-order-info" style="font-weight: bold; font-size: 14px; margin: 4px 0;">Dine-In | Meja 01</p>
+        </div>
+        <div class="receipt-divider">--------------------------------</div>
+        <div class="receipt-items" id="kitchen-items-list"></div>
+        <div class="receipt-divider">--------------------------------</div>
+        <div class="receipt-footer">
+            <p>Harap Segera Disiapkan!</p>
+        </div>
+    </div>
+
+    <!-- STRUK LAPORAN SHIFT -->
     <div class="receipt-print-area" id="shift-print-area">
         <div class="receipt-header">
             <h3>LAPORAN TUTUP SHIFT</h3>
